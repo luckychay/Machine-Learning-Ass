@@ -10,7 +10,7 @@ For training,
 
 `python classifier.py --mode train --classifier <classifier name>`
 
-where <classifier name> refers to different classifiers, including "LDA", "Bayes", "DT".
+where "classifier name" refers to different classifiers, including "LDA", "Bayes", "DT".
 
 For testing,
 
