@@ -1,7 +1,26 @@
 
 # Machine-Learning-Ass
 
-## LDA
+## Usage
+To run the code, requirements should be meet as indicated in requirements.txt.
+
+`pip install -r requirements.txt`
+
+For training,
+
+`python classifier.py --mode train --classifier <classifier name>`
+
+where <classifier name> refers to different classifiers, including "LDA", "Bayes", "DT".
+
+For testing,
+
+`python classifier.py --mode test --classifier <classifier name>`
+
+For visualization,
+
+`python classifier.py --mode vis`
+
+## Points about LDA
 There are two different definitions about with-class and between-class scatter matrix
 
 The first one is as follows, which is used by this repo:
@@ -11,4 +30,4 @@ The second one is as follows, which is used by this repo and sklearn:
 ![1648608329(1)](https://user-images.githubusercontent.com/55084546/160740728-60df572e-7188-4b15-9a04-4a0f26542261.png)
 
 
-Note that, generally we can use LDA both for dimensionality reduction and classificiation, when for classification we use all the eigenvectors and while choosing the leading c-1(c is the total class number) eigenvectors for dimensionality reduction.
+Note that, generally we can use LDA both for dimensionality reduction and classificiation, when for classification we use **all** the eigenvectors and while choosing the **leading c-1**(c is the total class number) eigenvectors for dimensionality reduction.

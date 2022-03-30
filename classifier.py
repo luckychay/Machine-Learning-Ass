@@ -3,14 +3,13 @@ Description:
 Version: 
 Author: Xuanying Chen
 Date: 2022-03-23 18:03:15
-LastEditTime: 2022-03-30 09:52:04
+LastEditTime: 2022-03-30 11:17:18
 '''
 
 from cmath import exp, pi
 from enum import unique
 from time import sleep
-from cv2 import transpose
-from importlib_metadata import re
+
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -19,13 +18,10 @@ import scipy.io
 from scipy.linalg import eigh
 import joblib
 import argparse
-from sklearn import cluster
-from sklearn.ensemble import RandomForestClassifier
+
 from sklearn.manifold import TSNE
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.preprocessing import RobustScaler
-from sklearn.cluster import DBSCAN 
 
 
 class Bayes():
@@ -311,9 +307,10 @@ class MLDA():
         return y_test
         
 
-class Decision_tree():
+class Decision_tree(DecisionTreeClassifier):
     def __init__(self) -> None:
-        pass
+        
+        super().__init__()
 
     def _cal_Gini_impurity(self,y):
         
@@ -327,10 +324,12 @@ class Decision_tree():
         return gini_impur
 
     def train(self,X,y):
-        pass
+        
+        self.fit(X,y) 
 
     def test(self,X):
-        pass
+        
+        return self.predict(X)
 
 def tSNE_visualize(X,y,title="data T-SNE projection"):
 
@@ -358,6 +357,7 @@ def loadmat(mat_filename):
 if __name__=="__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('--mode', type= str, default='train', help='choose runtime mode')
+    parser.add_argument('--classifier',type = str, default='LDA',help='choose classifier type')
     args = parser.parse_args()
     if args.mode == 'train':
         
@@ -366,17 +366,13 @@ if __name__=="__main__":
         train_y = loadmat("./Label_Train.mat")
         print('finish loading data.')
 
-        cls = LinearDiscriminantAnalysis()
-        cls.fit(train_X,train_y)
-        test_X = loadmat("./Data_test.mat")
-        print(cls.predict(test_X))
-
-        cls = RandomForestClassifier()
-        cls.fit(train_X,train_y)
-        print(cls.predict(test_X))
-
         print('begin training...')
-        cls = MLDA()
+        if args.classifier == 'LDA':
+            cls = MLDA()
+        elif args.classifier == 'Bayes':
+            cls = Bayes()
+        elif args.classifier == 'DT':
+            cls = Decision_tree()
         cls.train(train_X,train_y)
         print('finish training.')
         
@@ -386,7 +382,13 @@ if __name__=="__main__":
     elif args.mode == 'test':
 
         print('loading data and model...')
-        cls = joblib.load("MLDA.pkl")
+        if args.classifier == 'LDA':
+            cls = joblib.load("MLDA.pkl")
+        elif args.classifier == 'Bayes':
+            cls = joblib.load("Bayes.pkl")
+        elif args.classifier == 'DT':
+            cls = joblib.load("Decision_tree.pkl")
+        
         test_X = loadmat("./Data_test.mat")
         print('finish loading data and model.')
 
