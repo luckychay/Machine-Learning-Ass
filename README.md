@@ -5,7 +5,7 @@
 There are two different definitions about with-class and between-class scatter matrix
 
 The first one is as follows, which is used by this repo:
-
+<img src="https://latex.codecogs.com/png.latex? \Large x=\frac{-b\pm\sqrt{b^2-4ac}}{2a}">
 \mathbf{S}_w = \sum_{i=1}^n (\mathbf{x}_i - \boldsymbol{\mu}_{y_i}) (\mathbf{x}_i - \boldsymbol{\mu}_{y_i})^T
 
 \mathbf{S}_b = \sum_{k=1}^m n_k (\boldsymbol{\mu}_k - \boldsymbol{\mu}) (\boldsymbol{\mu}_k - \boldsymbol{\mu})^T
