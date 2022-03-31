@@ -3,7 +3,7 @@ Description:
 Version: 
 Author: Xuanying Chen
 Date: 2022-03-23 18:03:15
-LastEditTime: 2022-03-30 11:17:18
+LastEditTime: 2022-03-31 21:37:05
 '''
 
 from cmath import exp, pi
@@ -28,6 +28,7 @@ class Bayes():
     def __init__(self) -> None:
         self.class_num = 0
         self.classes = None
+        self.priors = None
         self.M = None  
         self.C = None
 
@@ -44,6 +45,7 @@ class Bayes():
         classes = np.unique(y)
         self.classes = classes
         self.class_num = len(classes)
+        self.priors = np.bincount(y.flatten())[1:] / float(y.shape[0])
 
         ## get mean vector and covariance matrices of each class
         M = np.zeros(shape=(self.class_num,X.shape[1]))
@@ -67,14 +69,16 @@ class Bayes():
         for i in range(test_num):
             scores = np.zeros(self.class_num)
             for j in range(self.class_num):
-                scores[j] = self.Guassian(self.M[j],self.C[j],X[i])
+                ## usee Guassian probability densities and 
+                ## priors to get scores 
+                scores[j] = self.priors[j] * \
+                 self.Guassian(self.M[j],self.C[j],X[i])
             Y[i] = self.classes[np.argmax(scores)]
 
         return Y
 
-
 class MLDA():
-    def __init__(self) -> None:
+    def __init__(self, matrix_type='scatter',cls_type='Bayes') -> None:
         self.class_num = 0
         self.classes = None
         self.left_class = 0
@@ -87,18 +91,27 @@ class MLDA():
         self.Sb = None
         self.W  = None
         self.W0 = None
+        self.matrix_type = matrix_type
+        self.cls_type = cls_type
 
     def _cal_mean_vec(self,vectors):
         
         return np.mean(vectors,axis=0)
+    
+    def _cal_Sw(self,scatter_matrices):
+
+        return np.sum(scatter_matrices,axis=0)
+
+    def _cal_Sw_with_priors(self,scatter_matrices):
+        s = np.zeros_like(scatter_matrices[0])
+        for i in range(scatter_matrices.shape[0]):
+            s += self.priors_[i] * scatter_matrices[i]
+
+        return s
 
     def _cal_Sb(self):
 
         return self.St-self.Sw
-
-    def _cal_Sw(self,scatter_matrices):
-
-        return np.sum(scatter_matrices,axis=0)
 
     def _cal_Sb_direct(self,y):
 
@@ -107,21 +120,160 @@ class MLDA():
             n = np.where(y==c)[0].shape[0]
             Sb += n * np.outer(m-self.total_mean_vec,m-self.total_mean_vec) 
 
-        return Sb/y.shape[0]
+        return Sb
 
     def _cal_scatter_matrix(self,vectors,mean):
-
-        ## should not normalize(divid by n) for normal definition
+        '''indeed co-scatter matrix'''
 
         s = np.zeros(shape=(vectors.shape[1],vectors.shape[1]))
         for vec in vectors:
             s += np.outer(vec-mean,vec-mean)
          
+        return s
+
+    def _cal_normalized_scatter_matrix(self,vectors,mean):
+        '''indeed covaraince matrix'''
+
+        s = self._cal_scatter_matrix(vectors,mean)
+ 
         return s/vectors.shape[0]
 
-    def MLDC_train(self,mean_proj):
-        '''Multicalss Marginal Linear Discriminant Classifier(MLDC) train'''
+    def _solve_eigen(self,X,y):
+        ''' solve for eigen values and eigen vectors'''
 
+        classes = np.unique(y)
+        self.classes = classes
+        self.class_num = len(classes)
+
+        self.priors_ = np.bincount(y.flatten())[1:] / float(y.shape[0])
+
+        ## cal mean vec of the whole dataset
+        total_mean_vec = self._cal_mean_vec(X)
+        self.total_mean_vec = total_mean_vec
+
+        ## cal total scatter matrix
+        if self.matrix_type == 'scatter':
+            self.St = self._cal_scatter_matrix(X, total_mean_vec)
+        elif self.matrix_type == 'covaraince':
+            self.St = self._cal_normalized_scatter_matrix(X, total_mean_vec)
+
+        ## cal mean vector and scatter matrix of each class
+        M = np.zeros(shape=(self.class_num,X.shape[1]))
+        S = np.zeros(shape=(self.class_num,X.shape[1],X.shape[1]))
+
+        self.priors = np.zeros(self.class_num,dtype=float)
+        for i,c in enumerate(classes):
+            index = np.where(y==c)[0]
+            self.priors[i] = index.shape[0]
+            M[i] = self._cal_mean_vec(X[index])
+            if self.matrix_type == 'scatter':
+                S[i] = self._cal_scatter_matrix(X[index],M[i]) 
+            elif self.matrix_type == 'covaraince':
+                S[i] = self._cal_normalized_scatter_matrix(X[index],M[i])       
+
+        self.classes_mean_vecs = M
+        classes_scatter_mats = S
+
+        ## cal within-class scatter matrix
+        if self.matrix_type == 'scatter':
+            self.Sw = self._cal_Sw(classes_scatter_mats) 
+        elif self.matrix_type == 'covaraince':
+            self.Sw = self._cal_Sw_with_priors(classes_scatter_mats) 
+
+        ## cal between-class scatter matrix
+        self.Sb = self._cal_Sb()
+
+        # cal eigen vector for generalized eigen value problem
+        eigen_vals,eigen_vecs = eigh(self.Sb,self.Sw)
+
+        return eigen_vals, eigen_vecs
+
+    def dim_reduction(self,X,y):
+        '''from n*m dim to c*c-1 dim mapping, where c is the class number of X'''
+        '''faced some issue here, should be recorded, mind different definition of Sw and Sb'''
+
+        eigen_vals, eigen_vecs = self._solve_eigen(X,y)
+        eig_num = self.class_num - 1
+
+        ## sort the eigenvalues and eigenvectors in descending order
+        ## and pick the first c-1 ones 
+        eigen_vals = eigen_vals[::-1][:eig_num]
+        eigen_vecs = eigen_vecs[:,::-1][:,:eig_num]
+
+        self._significance = np.real(eigen_vals/np.sum(eigen_vals))
+        self.W = eigen_vecs
+        mean_proj = self.classes_mean_vecs @ self.W  
+
+        return mean_proj
+
+    def classification_fit(self,X,y):
+
+        eigen_vals, eigen_vecs = self._solve_eigen(X,y)
+
+        # for classification, we use all the eigenvector 
+        eigen_vecs = eigen_vecs[:,::-1]
+        self.W = np.dot(self.classes_mean_vecs, eigen_vecs).dot(eigen_vecs.T)
+
+        self.W0 = -0.5 * np.diag(np.dot(self.classes_mean_vecs, self.W.T)) + np.log(
+            self.priors_
+        )
+
+    def Bayes_decision(self,X):
+
+        y = X @ self.W.T + self.W0
+
+        y_index = np.argmax(y,axis=1)
+        y_test = self.classes[y_index]
+
+        return y_test
+
+    def centroid_margin_train(self,mean_proj):
+
+        eig_num = self.class_num - 1
+
+        ## simply use the avarage of biggest and second biggest
+        used_index = np.argmax(mean_proj,axis=0)
+        nearests = np.argsort(mean_proj,axis=0)[-2]
+        self.W0 = -0.5 *(mean_proj[used_index,range(eig_num)] + mean_proj[nearests,range(eig_num)]) 
+            
+        self.used_classes = self.classes[used_index]
+        self.left_class = np.delete(self.classes,used_index)
+
+    def centroid_margin_test(self,X):
+
+        projects = X @ self.W + self.W0
+        max_scores = np.max(projects,axis=1)
+        left_class_index = np.where(max_scores<0)
+        test_Y = self.used_classes[np.argmax(projects,axis=1)]
+        test_Y[left_class_index] = self.left_class
+
+        return test_Y
+
+    def train(self,X,y):
+
+        if self.cls_type == 'Bayes':
+            self.classification_fit(X,y)
+        elif self.cls_type == 'margin':
+            mean_proj = self.dim_reduction(X,y)
+            self.centroid_margin_train(mean_proj)
+
+    def test(self,X):
+
+        if self.cls_type == 'Bayes':
+            y_test = self.Bayes_decision(X)
+        elif self.cls_type == 'margin':
+            y_test = self.centroid_margin_test(X)
+        
+        return y_test
+
+    def MLDC_train(self,mean_proj):
+        '''Multicalss Marginal Linear Discriminant Classifier(MLDC) train
+        References
+        ----------
+        .. [1] ] H. Kim, B.L. Drake, H. Park, Multiclass classifiers based on 
+        dimension reduction with generalized LDA, Pattern Recogn. 
+        40 (2007) 2939–2945.
+        '''
         t = int(0.5 * self.class_num*(self.class_num-1))
         self.W0 = np.zeros(shape=(t,self.class_num-1))
         self.CN = np.zeros_like(self.W0)
@@ -163,95 +315,6 @@ class MLDA():
 
         print(res)
 
-    def dim_reduction(self,X,y):
-        '''from n*m dim to c*c-1 dim mapping, where c is the class number of X'''
-        '''faced some issue here, should be recorded, mind different definition of Sw and Sb'''
-        
-        classes = np.unique(y)
-        self.classes = classes
-        self.class_num = len(classes)
-
-        self.priors_ = np.bincount(y.flatten())[1:] / float(y.shape[0])
-        print(self.priors_)
-        ## cal mean vec of the whole dataset
-        total_mean_vec = self._cal_mean_vec(X)
-        self.total_mean_vec = total_mean_vec
-
-        ## cal total scatter matrix
-        self.St = self._cal_scatter_matrix(X, total_mean_vec)
-
-        ## cal mean vector and scatter matrix of each class
-        M = np.zeros(shape=(self.class_num,X.shape[1]))
-        S = np.zeros(shape=(self.class_num,X.shape[1],X.shape[1]))
-
-        self.priors = np.zeros(self.class_num,dtype=float)
-        for i,c in enumerate(classes):
-            index = np.where(y==c)[0]
-            self.priors[i] = index.shape[0]
-            M[i] = self._cal_mean_vec(X[index])
-            S[i] = self._cal_scatter_matrix(X[index],M[i])
-
-        self.classes_mean_vecs = M
-        classes_scatter_mats = S
-
-        ## cal within-class scatter matrix
-        self.Sw = self._cal_Sw(classes_scatter_mats)
-
-        ## cal between-class scatter matrix
-        self.Sb = self._cal_Sb_direct(y)
-        
-        ## cal eigen vector for generalized eigen value problem
-        eig_num = self.class_num - 1
-        eigen_vals,eigen_vecs = eigh(self.Sb,self.St-self.Sb)
-
-        ## for classification, we use all the eigenvector 
-        eigen_vecs = eigen_vecs[::-1]
-        self.W = np.dot(self.classes_mean_vecs, eigen_vecs).dot(eigen_vecs.T)
-
-        self.W0 = -0.5 * np.diag(np.dot(self.classes_mean_vecs, self.W.T)) + np.log(
-            self.priors_
-        )
-
-        # ## sort the eigenvalues and eigenvectors in descending order
-        # ## and pick the first c-1 ones 
-        # eigen_vals = eigen_vals[::-1][:eig_num]
-        # eigen_vecs = eigen_vecs.T[::-1][:eig_num]
-
-        # self._significance = np.real(eigen_vals/np.sum(eigen_vals))
-        # self.W = eigen_vecs
-        # mean_proj = self.classes_mean_vecs @ self.W.T
-
-        # print("mean_proj:\n",mean_proj)   
-
-        # return mean_proj
-
-    def centroid_margin_train(self,mean_proj):
-
-        norm_mean_proj = mean_proj - np.mean(mean_proj,axis=0)
-        print("norm_mean_proj:\n",norm_mean_proj)
-        eig_num = self.class_num - 1
-
-        ## simply use the avarage of biggest and second biggest
-        used_index = np.argmax(mean_proj,axis=0)
-        nearests = np.argsort(mean_proj,axis=0)[-2]
-        self.W0 = -0.5 *(mean_proj[used_index,range(eig_num)] + mean_proj[nearests,range(eig_num)]) 
-            
-        self.used_classes = self.classes[used_index]
-        self.left_class = np.delete(self.classes,used_index)
-        print("used_index:",used_index)
-        print("self.left_class",self.left_class,"self.used_class",self.used_classes)
-
-    def centroid_margin_test(self,X):
-
-        projects = self.W@np.transpose(X)+np.reshape(self.W0,(-1,1))
-        print("projects.shape:",projects.shape)
-        print(projects)
-        max_scores = np.max(projects,axis=0)
-        left_class_index = np.where(max_scores<0)
-        test_Y = self.used_classes[np.argmax(projects,axis=0)]
-        test_Y[left_class_index] = self.left_class
-
-        return test_Y
 
     def significance_base_train(self,mean_proj):
 
@@ -290,22 +353,6 @@ class MLDA():
 
         return test_Y
 
-    def train(self,X,y):
-
-        self.dim_reduction(X,y)
-        
-        # self.significance_base_train(proj)
-
-
-    def test(self,X):
-
-        y = X @ self.W.T + self.W0
-
-        y_index = np.argmax(y,axis=1)
-        y_test = self.classes[y_index]
-
-        return y_test
-        
 
 class Decision_tree(DecisionTreeClassifier):
     def __init__(self) -> None:
@@ -365,10 +412,12 @@ if __name__=="__main__":
         train_X = loadmat("./Data_Train.mat")
         train_y = loadmat("./Label_Train.mat")
         print('finish loading data.')
-
+        cls = LinearDiscriminantAnalysis(solver='eigen')
+        cls.fit(train_X,train_y)
+        
         print('begin training...')
         if args.classifier == 'LDA':
-            cls = MLDA()
+            cls = MLDA(matrix_type = 'covaraince' ,cls_type='Bayes' )
         elif args.classifier == 'Bayes':
             cls = Bayes()
         elif args.classifier == 'DT':
