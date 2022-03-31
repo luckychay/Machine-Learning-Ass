@@ -26,7 +26,7 @@ There are two different definitions about with-class and between-class scatter m
 The first one is as follows, which is used by this repo:
 ![1648607797(1)](https://user-images.githubusercontent.com/55084546/160739741-c123a144-8bca-4532-847b-459526a73ebc.png)
 
-The second one is as follows, which is used by this repo and sklearn:
+The second one is as follows, which is used by this repo and sklearn. The difference lays not only on multiplying Sw and Sb with priors probabilities, but also on changing the mean vector for deduction in Sb. 
 ![1648608329(1)](https://user-images.githubusercontent.com/55084546/160740728-60df572e-7188-4b15-9a04-4a0f26542261.png)
 
 
