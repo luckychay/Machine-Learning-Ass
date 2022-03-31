@@ -39,12 +39,12 @@ Its 𝑖-th diagonal element is equal to ∑𝑎2(𝑖), where 𝑎(𝑖) denote
 
 There is a number of important association coefficients and their square matrices are called angular similarities or SSCP-type similarities:
 
-Dividing SSCP matrix by 𝑛, the sample size or number of rows of 𝐀, you get MSCP (mean-square-and-cross-product) matrix. The pairwise formula of this association measure is hence ∑𝑥𝑦𝑛 (with vectors 𝑥 and 𝑦 being a pair of columns from 𝐀).
+Dividing SSCP matrix by 𝑛, the sample size or number of rows of 𝐀, you get MSCP (mean-square-and-cross-product) matrix. The pairwise formula of this association measure is hence ∑𝑥𝑦/𝑛 (with vectors 𝑥 and 𝑦 being a pair of columns from 𝐀).
 
-If you center columns (variables) of 𝐀, then 𝐀′𝐀 is the scatter (or co-scatter, if to be rigorous) matrix and 𝐀′𝐀/(𝑛−1) is the covariance matrix. Pairwise formula of covariance is ∑𝑐𝑥𝑐𝑦𝑛−1 with 𝑐𝑥 and 𝑐𝑦 denoting centerted columns.
+If you center columns (variables) of 𝐀, then 𝐀′𝐀 is the scatter (or co-scatter, if to be rigorous) matrix and 𝐀′𝐀/(𝑛−1) is the covariance matrix. Pairwise formula of covariance is ∑𝑐𝑥𝑐𝑦/𝑛−1 with 𝑐𝑥 and 𝑐𝑦 denoting centerted columns.
 
-If you z-standardize columns of 𝐀 (subtract the column mean and divide by the standard deviation), then 𝐀′𝐀/(𝑛−1) is the Pearson correlation matrix: correlation is covariance for standardized variables. Pairwise formula of correlation is ∑𝑧𝑥𝑧𝑦𝑛−1 with 𝑧𝑥 and 𝑧𝑦 denoting standardized columns. The correlation is also called coefficient of linearity.
+If you z-standardize columns of 𝐀 (subtract the column mean and divide by the standard deviation), then 𝐀′𝐀/(𝑛−1) is the Pearson correlation matrix: correlation is covariance for standardized variables. Pairwise formula of correlation is ∑𝑧𝑥𝑧𝑦/𝑛−1 with 𝑧𝑥 and 𝑧𝑦 denoting standardized columns. The correlation is also called coefficient of linearity.
 
-If you unit-scale columns of 𝐀 (bring their SS, sum-of-squares, to 1), then 𝐀′𝐀 is the cosine similarity matrix. The equivalent pairwise formula thus appears to be ∑𝑢𝑥𝑢𝑦=∑𝑥𝑦∑𝑥2√∑𝑦2√ with 𝑢𝑥 and 𝑢𝑦 denoting L2-normalized columns. Cosine similarity is also called coefficient of proportionality.
+If you unit-scale columns of 𝐀 (bring their SS, sum-of-squares, to 1), then 𝐀′𝐀 is the cosine similarity matrix. The equivalent pairwise formula thus appears to be ∑𝑢𝑥𝑢𝑦=∑𝑥𝑦/√∑𝑥2√∑𝑦2 with 𝑢𝑥 and 𝑢𝑦 denoting L2-normalized columns. Cosine similarity is also called coefficient of proportionality.
 
-If you center and then unit-scale columns of 𝐀, then 𝐀′𝐀 is again the Pearson correlation matrix, because correlation is cosine for centered variables1,2: ∑𝑐𝑢𝑥𝑐𝑢𝑦=∑𝑐𝑥𝑐𝑦∑𝑐2𝑥√∑𝑐2𝑦√
+If you center and then unit-scale columns of 𝐀, then 𝐀′𝐀 is again the Pearson correlation matrix, because correlation is cosine for centered variables1,2: ∑𝑐𝑢𝑥𝑐𝑢𝑦=∑𝑐𝑥𝑐𝑦/√∑𝑐2𝑥√∑𝑐2𝑦
